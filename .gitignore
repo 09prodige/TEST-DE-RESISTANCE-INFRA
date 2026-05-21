@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.env
+
+# Reports output
+reports/*.html
+reports/*.pdf
+reports/*.json
+
+# Secrets — jamais commités
+.env
+*.key
+*.pem
+secrets/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# opencode cache
+.opencode/cache/
