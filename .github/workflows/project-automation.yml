@@ -1,0 +1,103 @@
+name: Project Automation
+
+on:
+  issues:
+    types: [opened, closed, reopened]
+  pull_request:
+    types: [opened, closed, ready_for_review, converted_to_draft]
+
+env:
+  PROJECT_ID: PVT_kwHOB4wjys4BYd2l
+  KANBAN_FIELD_ID: PVTSSF_lAHOB4wjys4BYd2lzhTjjKI
+  OPT_BACKLOG: "905952ec"
+  OPT_IN_PROGRESS: "b725a290"
+  OPT_REVIEW: "b11d22e1"
+  OPT_DONE: "849313b7"
+
+jobs:
+  automate:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Get item ID in project
+        id: get_item
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          CONTENT_ID="${{ github.event.issue.node_id || github.event.pull_request.node_id }}"
+          ITEM_ID=$(gh api graphql -f query="
+          mutation {
+            addProjectV2ItemById(input: {
+              projectId: \"$PROJECT_ID\",
+              contentId: \"$CONTENT_ID\"
+            }) {
+              item { id }
+            }
+          }" -q '.data.addProjectV2ItemById.item.id')
+          echo "item_id=$ITEM_ID" >> $GITHUB_OUTPUT
+
+      - name: Move to In Progress (PR opened / issue reopened)
+        if: |
+          (github.event_name == 'pull_request' && github.event.action == 'opened') ||
+          (github.event_name == 'issues' && github.event.action == 'reopened')
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          gh api graphql -f query="
+          mutation {
+            updateProjectV2ItemFieldValue(input: {
+              projectId: \"$PROJECT_ID\",
+              itemId: \"${{ steps.get_item.outputs.item_id }}\",
+              fieldId: \"$KANBAN_FIELD_ID\",
+              value: { singleSelectOptionId: \"$OPT_IN_PROGRESS\" }
+            }) { projectV2Item { id } }
+          }"
+
+      - name: Move to Review (PR ready for review)
+        if: github.event_name == 'pull_request' && github.event.action == 'ready_for_review'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          gh api graphql -f query="
+          mutation {
+            updateProjectV2ItemFieldValue(input: {
+              projectId: \"$PROJECT_ID\",
+              itemId: \"${{ steps.get_item.outputs.item_id }}\",
+              fieldId: \"$KANBAN_FIELD_ID\",
+              value: { singleSelectOptionId: \"$OPT_REVIEW\" }
+            }) { projectV2Item { id } }
+          }"
+
+      - name: Move to Done (PR merged / issue closed)
+        if: |
+          (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true) ||
+          (github.event_name == 'issues' && github.event.action == 'closed')
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          gh api graphql -f query="
+          mutation {
+            updateProjectV2ItemFieldValue(input: {
+              projectId: \"$PROJECT_ID\",
+              itemId: \"${{ steps.get_item.outputs.item_id }}\",
+              fieldId: \"$KANBAN_FIELD_ID\",
+              value: { singleSelectOptionId: \"$OPT_DONE\" }
+            }) { projectV2Item { id } }
+          }"
+
+      - name: Move to Backlog (issue reopened from closed)
+        if: github.event_name == 'issues' && github.event.action == 'opened'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          gh api graphql -f query="
+          mutation {
+            updateProjectV2ItemFieldValue(input: {
+              projectId: \"$PROJECT_ID\",
+              itemId: \"${{ steps.get_item.outputs.item_id }}\",
+              fieldId: \"$KANBAN_FIELD_ID\",
+              value: { singleSelectOptionId: \"$OPT_BACKLOG\" }
+            }) { projectV2Item { id } }
+          }"
