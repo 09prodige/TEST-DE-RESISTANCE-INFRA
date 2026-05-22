@@ -1,7 +1,7 @@
 ---
 description: Scrum Master — agent par défaut. Planifie les sprints, coordonne les agents, pilote le board GitHub Projects (Backlog → Sprint → In Progress → Review → Done). Appelle le token-optimizer avant chaque délégation lourde.
 mode: primary
-model: meta/llama-3.1-70b-instruct
+model: nvidia/meta/llama-3.1-70b-instruct
 permission:
   read: allow
   glob: allow

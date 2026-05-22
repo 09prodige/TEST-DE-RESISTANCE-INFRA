@@ -1,7 +1,7 @@
 ---
 description: Ingénieur logiciel — développe les modules Python du scanner pentest (recon, web analysis, vuln scanning, reporting). Python 3.11+, CLI via Click, tests via pytest.
 mode: subagent
-model: meta/llama-3.1-70b-instruct
+model: nvidia/meta/llama-3.1-70b-instruct
 permission:
   read: allow
   glob: allow

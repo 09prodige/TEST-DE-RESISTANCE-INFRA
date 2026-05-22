@@ -1,7 +1,7 @@
 ---
 description: Optimiseur de tokens — supervise la consommation de tokens de tous les agents. Applique RTK, déclenche /compact au bon moment, recommande la sélection de modèle par tâche, évite les agents parallèles inutiles.
 mode: subagent
-model: meta/llama-3.1-70b-instruct
+model: nvidia/meta/llama-3.1-70b-instruct
 permission:
   read: allow
   glob: allow

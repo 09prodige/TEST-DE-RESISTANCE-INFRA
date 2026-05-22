@@ -1,7 +1,7 @@
 ---
 description: Ingénieur DevOps — gère la CI/CD GitHub Actions (lint → test → security → build), maintient opencode.json, configure les workflows, gère les secrets et les permissions agents.
 mode: subagent
-model: meta/llama-3.1-70b-instruct
+model: nvidia/meta/llama-3.1-70b-instruct
 permission:
   read: allow
   glob: allow

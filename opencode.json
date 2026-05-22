@@ -1,12 +1,128 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "meta/llama-3.1-70b-instruct",
+  "username": "09prodige",
+  "model": "opencode/big-pickle",
   "default_agent": "scrum-master",
-  "compaction": {
-    "enabled": true,
-    "keep_last": 20
+  "instructions": ["AGENTS.md"],
+  "skills": {
+    "paths": [".opencode/skills"]
   },
+  "agent": {
+    "project-manager": {
+      "model": "opencode/big-pickle",
+      "mode": "primary",
+      "description": "Chef de projet global — supervise la vision, la roadmap et coordonne avec le scrum-master.",
+      "permission": {
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "edit": "allow",
+        "task": "allow",
+        "bash": { "find *": "allow", "ls *": "allow", "gh issue *": "allow", "gh project *": "allow", "git log *": "allow", "git status": "allow", "*": "ask" },
+        "external_directory": { "/home/jeremie/Documents/Resistance Infrastructure Gabon/**": "allow", "*": "ask" }
+      }
+    },
+    "scrum-master": {
+      "model": "opencode/big-pickle",
+      "mode": "primary",
+      "description": "Scrum Master — planifie les sprints, coordonne les agents, pilote le board GitHub Projects (Backlog → Sprint → In Progress → Review → Done). Point d'entrée par défaut.",
+      "permission": {
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "edit": "allow",
+        "task": "allow",
+        "bash": { "find *": "allow", "ls *": "allow", "mkdir *": "allow", "gh issue *": "allow", "gh project *": "allow", "gh pr *": "allow", "git status": "allow", "git log *": "allow", "git diff *": "allow", "rtk *": "allow", "rm *": "ask", "git *": "ask", "*": "ask" },
+        "external_directory": { "/home/jeremie/Documents/Resistance Infrastructure Gabon/**": "allow", "*": "ask" }
+      }
+    },
+    "software-engineer": {
+      "model": "opencode/big-pickle",
+      "mode": "subagent",
+      "description": "Ingénieur logiciel — implémente les modules Python du scanner pentest (recon, web, vuln, reporting). Python 3.11+, CLI via Click, tests via pytest.",
+      "permission": {
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "edit": "allow",
+        "task": "allow",
+        "bash": { "python *": "allow", "python3 *": "allow", "find *": "allow", "ls *": "allow", "pip install *": "ask", "*": "ask" },
+        "external_directory": { "/home/jeremie/Documents/Resistance Infrastructure Gabon/**": "allow", "*": "ask" }
+      }
+    },
+    "devops-engineer": {
+      "model": "opencode/big-pickle",
+      "mode": "subagent",
+      "description": "Ingénieur DevOps — gère CI/CD GitHub Actions, maintient opencode.json, configure les workflows et les secrets.",
+      "permission": {
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "edit": "allow",
+        "task": "allow",
+        "bash": { "pip *": "allow", "pip3 *": "allow", "find *": "allow", "ls *": "allow", "mkdir *": "allow", "curl *": "allow", "gh workflow *": "allow", "gh secret *": "ask", "git *": "ask", "*": "ask" },
+        "external_directory": { "/home/jeremie/Documents/Resistance Infrastructure Gabon/**": "allow", "*": "ask" }
+      }
+    },
+    "cybersecurity-engineer": {
+      "model": "opencode/big-pickle",
+      "mode": "subagent",
+      "description": "Ingénieur cybersécurité — audite le code (OWASP Top 10), vérifie les permissions agents, valide les modules de scan. Lecture seule sur le code source.",
+      "permission": {
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "edit": "deny",
+        "task": "allow",
+        "bash": { "find *": "allow", "cat *": "allow", "python -m pytest tests/security*": "allow", "python3 -m pytest tests/security*": "allow", "*": "ask" },
+        "external_directory": { "/home/jeremie/Documents/Resistance Infrastructure Gabon/**": "allow", "*": "ask" }
+      }
+    },
+    "qa-engineer": {
+      "model": "opencode/big-pickle",
+      "mode": "subagent",
+      "description": "Ingénieur QA — écrit et exécute les tests pytest, valide la cohérence des modules, benchmarke les performances.",
+      "permission": {
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "edit": "allow",
+        "task": "allow",
+        "bash": { "python -m pytest *": "allow", "python3 -m pytest *": "allow", "python *": "allow", "python3 *": "allow", "find *": "allow", "ls *": "allow", "*": "ask" },
+        "external_directory": { "/home/jeremie/Documents/Resistance Infrastructure Gabon/**": "allow", "*": "ask" }
+      }
+    },
+    "token-optimizer": {
+      "model": "opencode/big-pickle",
+      "mode": "subagent",
+      "description": "Optimiseur de tokens — supervise la consommation, applique RTK, déclenche /compact, recommande la sélection de modèle.",
+      "permission": {
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "edit": "deny",
+        "task": "allow",
+        "bash": { "rtk gain": "allow", "rtk discover": "allow", "rtk gain --history": "allow", "find *": "allow", "ls *": "allow", "*": "ask" },
+        "external_directory": { "/home/jeremie/Documents/Resistance Infrastructure Gabon/**": "allow", "*": "ask" }
+      }
+    }
+  },
+  "permission": {
+    "edit": "ask",
+    "bash": { "find *": "allow", "ls *": "allow", "*": "ask" },
+    "external_directory": { "/home/jeremie/Documents/Resistance Infrastructure Gabon/**": "allow", "*": "ask" }
+  },
+  "formatter": false,
   "lsp": false,
-  "format": false,
-  "skills": ".opencode/skills"
+  "compaction": {
+    "auto": true,
+    "tail_turns": 10
+  }
 }

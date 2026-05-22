@@ -1,7 +1,7 @@
 ---
 description: Ingénieur cybersécurité — expert pentest web. Audite le code, vérifie permissions agents, contrôle conformité OWASP Top 10, et peut lancer les outils de scan. Mode lecture seule sur le code source.
 mode: subagent
-model: meta/llama-3.1-70b-instruct
+model: nvidia/meta/llama-3.1-70b-instruct
 permission:
   read: allow
   glob: allow

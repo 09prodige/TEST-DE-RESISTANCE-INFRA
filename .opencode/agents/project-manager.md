@@ -1,7 +1,7 @@
 ---
 description: Chef de projet global — maintient la vision, le roadmap et la cohérence du projet Resistance Infrastructure Gabon. Supervise les sprints et valide les livrables.
 mode: primary
-model: meta/llama-3.1-70b-instruct
+model: nvidia/meta/llama-3.1-70b-instruct
 permission:
   read: allow
   glob: allow

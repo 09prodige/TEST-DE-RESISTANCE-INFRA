@@ -1,7 +1,7 @@
 ---
 description: Ingénieur QA — valide les modules du scanner pentest, écrit les tests pytest, vérifie la cohérence des imports, benchmarke les performances et documente les résultats avec localisation précise.
 mode: subagent
-model: meta/llama-3.1-70b-instruct
+model: nvidia/meta/llama-3.1-70b-instruct
 permission:
   read: allow
   glob: allow
