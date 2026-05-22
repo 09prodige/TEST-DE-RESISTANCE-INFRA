@@ -1,4 +1,3 @@
-import pytest
 from src.core.scanner import Scanner
 from src.core.report import Report
 
