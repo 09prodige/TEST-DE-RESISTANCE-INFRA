@@ -27,9 +27,7 @@ class Scanner:
 
         if run_all or "vuln" in self.modules:
             logger.info("Running vulnerability scanner...")
-            # TODO: from src.modules.vuln import run_vuln
-            # self.results["modules"]["vuln"] = run_vuln(self.target)
-            self.results["modules"]["vuln"] = {}
+            self.results["modules"]["vuln"] = self._run_vuln()
 
         return self.results
 
@@ -144,6 +142,67 @@ class Scanner:
             web_results["fingerprint"] = {"status": "error", "data": {}, "error": str(exc)}
 
         return web_results
+
+    def _run_vuln(self) -> dict:
+        """Execute all vulnerability sub-modules and return combined results."""
+        vuln_results: dict = {}
+
+        # Construct target URL
+        target_url = self.target
+        if not target_url.startswith(("http://", "https://")):
+            target_url = f"https://{target_url}"
+
+        # SQL Injection
+        try:
+            from src.modules.vuln.sqli import scan_sqli
+            vuln_results["sqli"] = scan_sqli(target_url)
+            sqli_findings = len(vuln_results["sqli"].get("data", {}).get("findings", []))
+            logger.info(f"SQLi scan complete — {sqli_findings} findings")
+        except Exception as exc:
+            logger.error(f"SQLi module failed: {exc}")
+            vuln_results["sqli"] = {"status": "error", "data": {"findings": []}}
+
+        # XSS
+        try:
+            from src.modules.vuln.xss import scan_xss
+            vuln_results["xss"] = scan_xss(target_url)
+            xss_findings = len(vuln_results["xss"].get("data", {}).get("findings", []))
+            logger.info(f"XSS scan complete — {xss_findings} findings")
+        except Exception as exc:
+            logger.error(f"XSS module failed: {exc}")
+            vuln_results["xss"] = {"status": "error", "data": {"findings": []}}
+
+        # CSRF
+        try:
+            from src.modules.vuln.csrf import scan_csrf
+            vuln_results["csrf"] = scan_csrf(target_url)
+            csrf_findings = len(vuln_results["csrf"].get("data", {}).get("findings", []))
+            logger.info(f"CSRF scan complete — {csrf_findings} findings")
+        except Exception as exc:
+            logger.error(f"CSRF module failed: {exc}")
+            vuln_results["csrf"] = {"status": "error", "data": {"findings": []}}
+
+        # Sensitive files
+        try:
+            from src.modules.vuln.sensitive_files import scan_sensitive_files
+            vuln_results["sensitive_files"] = scan_sensitive_files(target_url)
+            sf_findings = len(vuln_results["sensitive_files"].get("data", {}).get("findings", []))
+            logger.info(f"Sensitive files scan complete — {sf_findings} findings")
+        except Exception as exc:
+            logger.error(f"Sensitive files module failed: {exc}")
+            vuln_results["sensitive_files"] = {"status": "error", "data": {"findings": []}}
+
+        # Open Redirect
+        try:
+            from src.modules.vuln.open_redirect import scan_open_redirect
+            vuln_results["open_redirect"] = scan_open_redirect(target_url)
+            or_findings = len(vuln_results["open_redirect"].get("data", {}).get("findings", []))
+            logger.info(f"Open redirect scan complete — {or_findings} findings")
+        except Exception as exc:
+            logger.error(f"Open redirect module failed: {exc}")
+            vuln_results["open_redirect"] = {"status": "error", "data": {"findings": []}}
+
+        return vuln_results
 
 
 if __name__ == "__main__":
