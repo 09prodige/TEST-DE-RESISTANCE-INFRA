@@ -23,9 +23,7 @@ class Scanner:
 
         if run_all or "web" in self.modules:
             logger.info("Running web analysis module...")
-            # TODO: from src.modules.web import run_web
-            # self.results["modules"]["web"] = run_web(self.target)
-            self.results["modules"]["web"] = {}
+            self.results["modules"]["web"] = self._run_web()
 
         if run_all or "vuln" in self.modules:
             logger.info("Running vulnerability scanner...")
@@ -79,6 +77,73 @@ class Scanner:
             recon_results["portscan"] = []
 
         return recon_results
+
+    def _run_web(self) -> dict:
+        """Execute all web analysis sub-modules and return combined results."""
+        web_results: dict = {}
+
+        # Construct target URL
+        target_url = self.target
+        if not target_url.startswith(("http://", "https://")):
+            target_url = f"https://{target_url}"
+
+        # Extract hostname for SSL audit
+        from urllib.parse import urlparse
+        parsed = urlparse(target_url)
+        hostname = parsed.hostname or self.target
+
+        # Headers analysis
+        try:
+            from src.modules.web.headers import analyze_headers
+            web_results["headers"] = analyze_headers(target_url)
+            header_status = web_results["headers"].get("status", "error")
+            logger.info(f"Headers analysis complete — "
+                        f"status: {header_status}")
+        except Exception as exc:
+            logger.error(f"Headers analysis failed: {exc}")
+            web_results["headers"] = {"status": "error", "data": {}, "error": str(exc)}
+
+        # SSL/TLS audit
+        try:
+            from src.modules.web.ssl_tls import audit_ssl
+            web_results["ssl_tls"] = audit_ssl(hostname)
+            ssl_status = web_results["ssl_tls"].get("status", "error")
+            logger.info(f"SSL/TLS audit complete — "
+                        f"status: {ssl_status}")
+        except Exception as exc:
+            logger.error(f"SSL/TLS audit failed: {exc}")
+            web_results["ssl_tls"] = {"status": "error", "data": {}, "error": str(exc)}
+
+        # Crawler
+        try:
+            from src.modules.web.crawler import crawl
+            web_results["crawler"] = crawl(target_url, max_depth=2)
+            crawler_pages = (
+                web_results["crawler"]
+                .get("data", {})
+                .get("total_pages", 0)
+            )
+            logger.info(f"Crawler complete — {crawler_pages} pages")
+        except Exception as exc:
+            logger.error(f"Crawler failed: {exc}")
+            web_results["crawler"] = {"status": "error", "data": {}, "error": str(exc)}
+
+        # Fingerprinting
+        try:
+            from src.modules.web.fingerprint import fingerprint
+            web_results["fingerprint"] = fingerprint(target_url)
+            fp_count = (
+                web_results["fingerprint"]
+                .get("data", {})
+                .get("total_detected", 0)
+            )
+            logger.info(f"Fingerprinting complete — "
+                        f"{fp_count} technologies detected")
+        except Exception as exc:
+            logger.error(f"Fingerprinting failed: {exc}")
+            web_results["fingerprint"] = {"status": "error", "data": {}, "error": str(exc)}
+
+        return web_results
 
 
 if __name__ == "__main__":
