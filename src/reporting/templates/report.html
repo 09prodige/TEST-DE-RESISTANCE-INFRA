@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Scan Report — {{ target }}</title>
+<style>
+  /* === Reset & Base === */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    color: #1a1a2e; background: #f0f2f5; line-height: 1.6; font-size: 14px;
+  }
+
+  /* === Print === */
+  @media print {
+    body { background: #fff; font-size: 12px; }
+    .page-break { page-break-before: always; }
+    .no-print { display: none !important; }
+    .card { break-inside: avoid; box-shadow: none; border: 1px solid #ddd; }
+  }
+
+  /* === Layout === */
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff; padding: 30px 20px; border-radius: 12px; margin-bottom: 24px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  header .logo { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  header .logo span { color: #e94560; }
+  header .meta { text-align: right; font-size: 13px; opacity: 0.85; }
+  header .meta .label { opacity: 0.6; }
+
+  /* === Cards === */
+  .card {
+    background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 20px; overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 20px; border-bottom: 1px solid #eee;
+    font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;
+  }
+  .card-body { padding: 20px; }
+  .card-footer {
+    padding: 12px 20px; background: #fafafa; border-top: 1px solid #eee;
+    font-size: 13px; color: #666;
+  }
+
+  /* === Executive Summary === */
+  .exec-summary { text-align: center; padding: 30px 20px; }
+  .exec-summary .grade {
+    font-size: 72px; font-weight: 900;
+    width: 120px; height: 120px; line-height: 120px;
+    border-radius: 50%; margin: 0 auto 16px;
+    color: #fff;
+  }
+  .grade-a { background: #10b981; }
+  .grade-b { background: #3b82f6; }
+  .grade-c { background: #f59e0b; }
+  .grade-d { background: #f97316; }
+  .grade-f { background: #ef4444; }
+
+  .stats-row { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin: 20px 0; }
+  .stat-item { text-align: center; min-width: 100px; }
+  .stat-item .num { font-size: 32px; font-weight: 800; line-height: 1; }
+  .stat-item .lbl { font-size: 12px; color: #666; margin-top: 4px; }
+  .stat-critical .num { color: #ef4444; }
+  .stat-high .num { color: #f97316; }
+  .stat-medium .num { color: #f59e0b; }
+  .stat-low .num { color: #3b82f6; }
+  .stat-info .num { color: #6b7280; }
+
+  /* === Severity Bar Chart === */
+  .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 160px;
+    padding: 20px 0; justify-content: center; }
+  .bar-item { display: flex; flex-direction: column; align-items: center; width: 60px; }
+  .bar {
+    width: 40px; border-radius: 6px 6px 0 0; min-height: 4px;
+    transition: height 0.3s; position: relative;
+  }
+  .bar-label { margin-top: 6px; font-size: 12px; color: #666; }
+  .bar-count { font-size: 11px; font-weight: 700; margin-bottom: 4px; }
+  .bar-critical { background: #ef4444; }
+  .bar-high { background: #f97316; }
+  .bar-medium { background: #f59e0b; }
+  .bar-low { background: #3b82f6; }
+  .bar-info { background: #6b7280; }
+
+  /* === Severity badges === */
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+  }
+  .badge-critical { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+  .badge-high { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
+  .badge-medium { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+  .badge-low { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+  .badge-info { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
+  .badge-pass { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+  .badge-fail { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+  .badge-partial { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+
+  /* === Tables === */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f8fafc; text-align: left; padding: 10px 12px;
+       font-weight: 700; color: #475569; border-bottom: 2px solid #e2e8f0; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:hover { background: #f8fafc; }
+
+  /* === Findings === */
+  .finding-details { margin: 4px 0; }
+  .finding-details dt { font-weight: 600; color: #475569; font-size: 12px; margin-top: 6px; }
+  .finding-details dd { font-size: 13px; margin-left: 0; word-break: break-all; }
+  .evidence-box {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;
+    padding: 10px; font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 12px; white-space: pre-wrap; word-break: break-all;
+    max-height: 120px; overflow-y: auto;
+  }
+
+  /* === CVSS Dashboard === */
+  .cvss-dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cvss-metric { padding: 8px 12px; border-radius: 6px; display: flex;
+    justify-content: space-between; align-items: center; background: #f8fafc; }
+  .cvss-metric .label { font-weight: 600; color: #475569; font-size: 12px; }
+  .cvss-metric .value { font-family: monospace; font-weight: 700; font-size: 14px; }
+  .cvss-score-display {
+    text-align: center; padding: 20px;
+    border-radius: 12px; color: #fff; margin-bottom: 16px;
+  }
+  .cvss-score-display.critical { background: linear-gradient(135deg, #dc2626, #ef4444); }
+  .cvss-score-display.high { background: linear-gradient(135deg, #ea580c, #f97316); }
+  .cvss-score-display.medium { background: linear-gradient(135deg, #d97706, #f59e0b); }
+  .cvss-score-display.low { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+  .cvss-score-display.none { background: linear-gradient(135deg, #6b7280, #9ca3af); }
+  .cvss-score-display .score { font-size: 48px; font-weight: 900; line-height: 1; }
+  .cvss-score-display .severity-label { font-size: 18px; font-weight: 600; margin-top: 4px; }
+  .cvss-score-display .vector { font-size: 12px; opacity: 0.8; margin-top: 8px;
+    font-family: monospace; word-break: break-all; }
+
+  /* === Section Nav === */
+  .section-nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .section-nav a {
+    text-decoration: none; padding: 8px 16px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; color: #475569;
+    background: #fff; border: 1px solid #e2e8f0; transition: all 0.15s;
+  }
+  .section-nav a:hover { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+  /* === Key-Value === */
+  .kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .kv-item { padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+  .kv-item .key { font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; }
+  .kv-item .val { font-size: 14px; font-weight: 500; word-break: break-all; }
+
+  /* === SSL Certs === */
+  .cert-details dt { font-weight: 600; color: #475569; font-size: 12px; margin-top: 8px; }
+  .cert-details dd { font-size: 13px; word-break: break-all; }
+
+  /* === Responsive === */
+  @media (max-width: 768px) {
+    header { flex-direction: column; text-align: center; gap: 12px; }
+    header .meta { text-align: center; }
+    .stats-row { gap: 16px; }
+    .stat-item { min-width: 80px; }
+    .cvss-dashboard { grid-template-columns: 1fr; }
+    .kv-grid { grid-template-columns: 1fr; }
+  }
+
+  /* === Misc === */
+  .text-muted { color: #6b7280; }
+  .mt-2 { margin-top: 8px; }
+  .mt-3 { margin-top: 16px; }
+  .mb-2 { margin-bottom: 8px; }
+  .mb-3 { margin-bottom: 16px; }
+  .flex { display: flex; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 16px; }
+  .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  hr { border: none; border-top: 1px solid #eee; margin: 16px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ===================== HEADER ===================== -->
+  <header>
+    <div class="logo">RIG <span>Scanner</span></div>
+    <div class="meta">
+      <div><span class="label">Target:</span> {{ target }}</div>
+      <div><span class="label">Date:</span> {{ generated_at }}</div>
+      <div><span class="label">Duration:</span> {{ scan_duration if scan_duration else "N/A" }}</div>
+    </div>
+  </header>
+
+  <!-- ===================== NAV ===================== -->
+  <nav class="section-nav no-print">
+    <a href="#summary">Executive Summary</a>
+    {% if recon is defined and recon %}
+    <a href="#recon">Reconnaissance</a>
+    {% endif %}
+    {% if web is defined and web %}
+    <a href="#web">Web Analysis</a>
+    {% endif %}
+    {% if vuln is defined and vuln %}
+    <a href="#vuln">Vulnerabilities</a>
+    {% endif %}
+  </nav>
+
+  <!-- ===================== EXECUTIVE SUMMARY ===================== -->
+  <div class="card" id="summary">
+    <div class="card-header">📊 Executive Summary</div>
+    <div class="exec-summary">
+      <div class="grade grade-{{ grade|lower if grade else 'f' }}">{{ grade if grade else 'F' }}</div>
+      <p style="color:#666; margin-bottom: 12px;">
+        Scan completed for <strong>{{ target }}</strong>
+        {% if scan_duration %} in {{ scan_duration }}{% endif %}.
+      </p>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-item stat-critical">
+          <div class="num">{{ vuln_summary.critical if vuln_summary else 0 }}</div>
+          <div class="lbl">Critical</div>
+        </div>
+        <div class="stat-item stat-high">
+          <div class="num">{{ vuln_summary.high if vuln_summary else 0 }}</div>
+          <div class="lbl">High</div>
+        </div>
+        <div class="stat-item stat-medium">
+          <div class="num">{{ vuln_summary.medium if vuln_summary else 0 }}</div>
+          <div class="lbl">Medium</div>
+        </div>
+        <div class="stat-item stat-low">
+          <div class="num">{{ vuln_summary.low if vuln_summary else 0 }}</div>
+          <div class="lbl">Low</div>
+        </div>
+        <div class="stat-item stat-info">
+          <div class="num">{{ vuln_summary.info if vuln_summary else 0 }}</div>
+          <div class="lbl">Info</div>
+        </div>
+      </div>
+
+      <!-- Severity bar chart -->
+      {% if vuln_summary %}
+      {% set max_count = [vuln_summary.critical, vuln_summary.high, vuln_summary.medium, vuln_summary.low, vuln_summary.info]|max %}
+      {% set max_count = max_count if max_count > 0 else 1 %}
+      <div class="bar-chart">
+        {% for sev in ['critical', 'high', 'medium', 'low', 'info'] %}
+        {% set count = vuln_summary[sev] if sev in vuln_summary else 0 %}
+        {% set bar_height = (count / max_count * 120)|int + 4 %}
+        <div class="bar-item">
+          <div class="bar-count">{{ count }}</div>
+          <div class="bar bar-{{ sev }}" style="height: {{ bar_height }}px;"></div>
+          <div class="bar-label">{{ sev|capitalize }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Module summary -->
+      <div class="stats-row" style="margin-top: 8px;">
+        <div class="stat-item">
+          <div class="num" style="color:#3b82f6;">{{ stats.modules_completed if stats else 0 }}</div>
+          <div class="lbl">Modules OK</div>
+        </div>
+        <div class="stat-item">
+          <div class="num" style="color:#ef4444;">{{ stats.modules_failed if stats else 0 }}</div>
+          <div class="lbl">Modules Failed</div>
+        </div>
+        <div class="stat-item">
+          <div class="num" style="color:#10b981;">{{ stats.total_findings if stats else 0 }}</div>
+          <div class="lbl">Total Findings</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== RECONNAISSANCE ===================== -->
+  {% if recon is defined and recon %}
+  <div class="page-break"></div>
+  <div class="card" id="recon">
+    <div class="card-header">🔍 Reconnaissance</div>
+    <div class="card-body">
+
+      <!-- DNS -->
+      {% if recon.dns is defined and recon.dns %}
+      <h3 class="mb-2">DNS Records</h3>
+      <table>
+        <thead><tr><th>Type</th><th>Records</th></tr></thead>
+        <tbody>
+          {% for rtype, records in recon.dns.items() %}
+          <tr>
+            <td><strong>{{ rtype }}</strong></td>
+            <td>
+              {% if records %}
+                {{ records|join(', ') }}
+              {% else %}
+                <span class="text-muted">No records</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      <!-- WHOIS -->
+      {% if recon.whois is defined and recon.whois %}
+      <h3 class="mt-3 mb-2">WHOIS Lookup</h3>
+      <div class="kv-grid">
+        {% for key, val in recon.whois.items() %}
+        {% if key != 'raw' %}
+        <div class="kv-item">
+          <div class="key">{{ key|replace('_', ' ')|title }}</div>
+          <div class="val">
+            {% if val is iterable and val is not string %}
+              {{ val|join(', ') }}
+            {% elif val is none %}
+              <span class="text-muted">N/A</span>
+            {% else %}
+              {{ val }}
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Subdomains -->
+      {% if recon.subdomains is defined and recon.subdomains %}
+      <h3 class="mt-3 mb-2">Subdomains ({{ recon.subdomains|length }})</h3>
+      {% if recon.subdomains %}
+      <table>
+        <thead><tr><th>Subdomain</th><th>IP</th><th>Source</th></tr></thead>
+        <tbody>
+          {% for sd in recon.subdomains %}
+          <tr>
+            <td>{{ sd.subdomain if sd.subdomain else sd }}</td>
+            <td>{{ sd.ip if sd.ip else '-' }}</td>
+            <td>{{ sd.source if sd.source else '-' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% endif %}
+
+      <!-- Port Scan -->
+      {% if recon.portscan is defined and recon.portscan %}
+      <h3 class="mt-3 mb-2">Open Ports ({{ recon.portscan|length }})</h3>
+      {% if recon.portscan %}
+      <table>
+        <thead><tr><th>Port</th><th>Service</th><th>State</th><th>Banner</th></tr></thead>
+        <tbody>
+          {% for p in recon.portscan %}
+          <tr>
+            <td>{{ p.port if p.port else p.get('port', '-') }}</td>
+            <td>{{ p.service if p.service else p.get('service', '-') }}</td>
+            <td><span class="badge badge-{{ 'pass' if p.state == 'open' else 'fail' }}">{{ p.state }}</span></td>
+            <td style="font-family:monospace;font-size:12px;">{{ p.banner if p.banner else '-' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted">No open ports found.</p>
+      {% endif %}
+      {% endif %}
+
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ===================== WEB ANALYSIS ===================== -->
+  {% if web is defined and web %}
+  <div class="page-break"></div>
+  <div class="card" id="web">
+    <div class="card-header">🌐 Web Analysis</div>
+    <div class="card-body">
+
+      <!-- Security Headers -->
+      {% if web.headers is defined and web.headers and web.headers.status != 'error' %}
+      {% set h = web.headers.data %}
+      <h3 class="mb-2">Security Headers
+        {% if h.grade %}
+        <span class="badge badge-{{ 'pass' if h.grade in ('A','B') else 'partial' if h.grade in ('C','D') else 'fail' }}">
+          Grade {{ h.grade }}
+        </span>
+        {% endif %}
+      </h3>
+      {% if h.score is defined %}
+      <p class="text-muted mb-2">Score: {{ h.score }}/{{ h.max_score }} ({{ h.percentage }}%)</p>
+      {% endif %}
+      <table>
+        <thead><tr><th>Header</th><th>Status</th><th>Value</th></tr></thead>
+        <tbody>
+          {% for header in h.headers %}
+          <tr>
+            <td><strong>{{ header.header }}</strong></td>
+            <td><span class="badge badge-{{ header.status }}">{{ header.status }}</span></td>
+            <td style="font-family:monospace;font-size:12px;">{{ header.value or '(missing)' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% elif web.headers is defined and web.headers.status == 'error' %}
+      <p class="text-muted">Headers analysis failed: {{ web.headers.error }}</p>
+      {% endif %}
+
+      <!-- SSL/TLS -->
+      {% if web.ssl_tls is defined and web.ssl_tls %}
+      {% set ssl = web.ssl_tls %}
+      <h3 class="mt-3 mb-2">SSL/TLS Configuration</h3>
+      {% if ssl.status == 'success' and ssl.data %}
+      {% set sd = ssl.data %}
+      <div class="kv-grid">
+        <div class="kv-item">
+          <div class="key">TLS Version</div>
+          <div class="val">
+            <span class="badge badge-{{ 'pass' if sd.tls_version in ('TLS 1.3','TLS 1.2') else 'fail' }}">
+              {{ sd.tls_version }}
+            </span>
+          </div>
+        </div>
+        <div class="kv-item">
+          <div class="key">Cipher Suite</div>
+          <div class="val" style="font-family:monospace;font-size:12px;">{{ sd.cipher.name }}</div>
+        </div>
+        <div class="kv-item">
+          <div class="key">Cipher Bits</div>
+          <div class="val">{{ sd.cipher.bits }}</div>
+        </div>
+        <div class="kv-item">
+          <div class="key">Certificate Status</div>
+          <div class="val">
+            {% if sd.certificate.expired %}
+            <span class="badge badge-fail">Expired</span>
+            {% elif sd.certificate.expires_in_days and sd.certificate.expires_in_days <= 30 %}
+            <span class="badge badge-partial">Expires in {{ sd.certificate.expires_in_days }} days</span>
+            {% else %}
+            <span class="badge badge-pass">Valid ({{ sd.certificate.expires_in_days }} days)</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="kv-item">
+          <div class="key">Subject</div>
+          <div class="val" style="font-size:12px;">{{ sd.certificate.subject }}</div>
+        </div>
+        <div class="kv-item">
+          <div class="key">Issuer</div>
+          <div class="val" style="font-size:12px;">{{ sd.certificate.issuer }}</div>
+        </div>
+      </div>
+      {% if sd.vulnerabilities %}
+      <h4 class="mt-2 mb-2">SSL Vulnerabilities</h4>
+      <table>
+        <thead><tr><th>Issue</th><th>Severity</th><th>Recommendation</th></tr></thead>
+        <tbody>
+          {% for vuln in sd.vulnerabilities %}
+          <tr>
+            <td>{{ vuln.description }}</td>
+            <td><span class="badge badge-{{ vuln.severity|lower }}">{{ vuln.severity }}</span></td>
+            <td style="font-size:12px;">{{ vuln.recommendation }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      {% else %}
+      <p class="text-muted">SSL audit failed: {{ ssl.error }}</p>
+      {% endif %}
+      {% endif %}
+
+      <!-- Fingerprinting -->
+      {% if web.fingerprint is defined and web.fingerprint and web.fingerprint.status == 'success' %}
+      {% set fp = web.fingerprint.data %}
+      <h3 class="mt-3 mb-2">Fingerprinting ({{ fp.total_detected }} technologies)</h3>
+      {% if fp.technologies %}
+      <table>
+        <thead><tr><th>Technology</th><th>Category</th><th>Confidence</th></tr></thead>
+        <tbody>
+          {% for tech in fp.technologies %}
+          <tr>
+            <td><strong>{{ tech.name }}</strong></td>
+            <td>{{ tech.category }}</td>
+            <td>{{ (tech.confidence * 100)|int }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted">No technologies detected.</p>
+      {% endif %}
+      {% endif %}
+
+      <!-- Crawler -->
+      {% if web.crawler is defined and web.crawler and web.crawler.status == 'success' %}
+      {% set c = web.crawler.data %}
+      <h3 class="mt-3 mb-2">Crawler Results</h3>
+      <div class="stats-row" style="justify-content:flex-start;">
+        <div class="stat-item"><div class="num" style="color:#3b82f6;">{{ c.total_pages }}</div><div class="lbl">Pages</div></div>
+        <div class="stat-item"><div class="num" style="color:#8b5cf6;">{{ c.total_forms }}</div><div class="lbl">Forms</div></div>
+        <div class="stat-item"><div class="num" style="color:#10b981;">{{ c.total_links }}</div><div class="lbl">Links</div></div>
+        <div class="stat-item"><div class="num" style="color:#f59e0b;">{{ c.total_resources }}</div><div class="lbl">Resources</div></div>
+      </div>
+      {% if c.pages %}
+      <table>
+        <thead><tr><th>URL</th><th>Depth</th><th>Forms</th></tr></thead>
+        <tbody>
+          {% for page in c.pages[:20] %}
+          <tr>
+            <td style="font-size:12px;max-width:400px;word-break:break-all;">{{ page.url }}</td>
+            <td>{{ page.depth }}</td>
+            <td>{{ page.form_count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if c.pages|length > 20 %}
+      <p class="text-muted mt-2">... and {{ c.pages|length - 20 }} more pages</p>
+      {% endif %}
+      {% endif %}
+      {% endif %}
+
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ===================== VULNERABILITIES ===================== -->
+  {% if vuln is defined and vuln %}
+  <div class="page-break"></div>
+  <div class="card" id="vuln">
+    <div class="card-header">⚠️ Vulnerability Findings</div>
+    <div class="card-body">
+
+      {% set all_findings = [] %}
+      {% for vuln_type, vuln_data in vuln.items() %}
+        {% if vuln_data is mapping and vuln_data.get('data', {}).get('findings') %}
+          {% for f in vuln_data.data.findings %}
+            {% set _ = all_findings.append(dict(finding=f, type=vuln_type)) %}
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+
+      {% if all_findings %}
+      <p class="mb-3">{{ all_findings|length }} vulnerability finding(s) identified.</p>
+
+      {% for item in all_findings %}
+      {% set f = item.finding %}
+      {% set vuln_type_label = item.type|replace('_', ' ')|title %}
+      {% set severity = f.get('severity', 'medium')|lower %}
+
+      <!-- Individual Finding Card -->
+      <div class="card" style="border-left: 4px solid
+        {% if severity in ('critical',) %}#ef4444
+        {% elif severity in ('high',) %}#f97316
+        {% elif severity in ('medium',) %}#f59e0b
+        {% elif severity in ('low',) %}#3b82f6
+        {% else %}#6b7280{% endif %}; margin-bottom: 16px;">
+        <div class="card-header" style="border-bottom: none; padding-bottom: 8px;">
+          <span class="badge badge-{{ severity }}">{{ severity }}</span>
+          <span>{{ vuln_type_label }}</span>
+          <span style="margin-left:auto;font-size:13px;color:#666;">
+            CVSS: {{ f.get('cvss_score', 'N/A') }}
+          </span>
+        </div>
+        <div class="card-body" style="padding-top: 0;">
+          <dl class="finding-details">
+            {% if f.param %}
+            <dt>Parameter</dt>
+            <dd>{{ f.param }}</dd>
+            {% endif %}
+            {% if f.url %}
+            <dt>URL</dt>
+            <dd>{{ f.url }}</dd>
+            {% endif %}
+            {% if f.method %}
+            <dt>Method</dt>
+            <dd>{{ f.method }}</dd>
+            {% endif %}
+            {% if f.type %}
+            <dt>Vulnerability Type</dt>
+            <dd>{{ f.type }}</dd>
+            {% endif %}
+            {% if f.payload %}
+            <dt>Payload</dt>
+            <dd style="font-family:monospace;font-size:12px;">{{ f.payload }}</dd>
+            {% endif %}
+            {% if f.evidence %}
+            <dt>Evidence</dt>
+            <dd>
+              {% if f.evidence is string %}
+              <div class="evidence-box">{{ f.evidence }}</div>
+              {% else %}
+              <div class="evidence-box">{{ f.evidence|join('\n') }}</div>
+              {% endif %}
+            </dd>
+            {% endif %}
+            {% if f.confidence is defined %}
+            <dt>Confidence</dt>
+            <dd>{{ (f.confidence * 100)|int }}%</dd>
+            {% endif %}
+          </dl>
+        </div>
+      </div>
+      {% endfor %}
+
+      {% else %}
+      <div style="text-align:center;padding:40px 20px;">
+        <p style="font-size:18px;color:#10b981;font-weight:700;">✅ No vulnerabilities detected</p>
+        <p class="text-muted mt-2">All security checks passed for the scanned modules.</p>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ===================== FOOTER ===================== -->
+  <div style="text-align:center;padding:20px;color:#9ca3af;font-size:12px;">
+    <p>Resistance Infrastructure Gabon — Web Security Scanner</p>
+    <p>Generated: {{ generated_at }} | Target: {{ target }}</p>
+    <p class="mt-2" style="font-size:11px;">This report is confidential and intended for authorized security testing.</p>
+  </div>
+
+</div>
+</body>
+</html>
