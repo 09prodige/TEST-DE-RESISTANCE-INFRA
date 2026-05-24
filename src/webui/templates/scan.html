@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}RIG Scanner — Scan {{ scan_id[:8] }}{% endblock %}
+
+{% block extra_head %}
+<style>
+@keyframes pulse-border {
+  0%, 100% { border-color: rgba(13, 202, 240, 0.5); }
+  50% { border-color: rgba(13, 202, 240, 1); }
+}
+.scanning-indicator {
+  animation: pulse-border 1.5s ease-in-out infinite;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Scan Status Header -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card bg-card border-secondary" id="statusCard">
+      <div class="card-header bg-darker border-secondary d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-3">
+          <h5 class="mb-0 fw-bold">
+            <i class="bi bi-bullseye text-info"></i>
+            {{ scan_record.target }}
+          </h5>
+          <span class="badge bg-secondary text-uppercase">
+            ID: {{ scan_id }}
+          </span>
+        </div>
+        <div id="statusBadgeContainer">
+          {% set status = scan_record.status %}
+          {% if status == 'done' %}
+          <span class="badge bg-success fs-6"><i class="bi bi-check-circle"></i> Completed</span>
+          {% elif status == 'running' or status == 'pending' %}
+          <span class="badge bg-info fs-6"><i class="bi bi-hourglass-split"></i> Scanning...</span>
+          {% elif status == 'error' %}
+          <span class="badge bg-danger fs-6"><i class="bi bi-exclamation-circle"></i> Error</span>
+          {% else %}
+          <span class="badge bg-secondary fs-6">{{ status }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-body">
+        <!-- Modules Info -->
+        <div class="mb-2">
+          <span class="text-muted me-2">Modules:</span>
+          {% for mod in scan_record.modules %}
+          <span class="badge bg-secondary me-1">{{ mod }}</span>
+          {% endfor %}
+        </div>
+
+        <!-- Running Indicator -->
+        <div id="runningIndicator" class="{% if scan_record.status not in ['running', 'pending'] %}d-none{% endif %}">
+          <div class="d-flex align-items-center gap-3 p-3 bg-dark rounded border border-info scanning-indicator">
+            <div class="spinner-border text-info" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <div>
+              <h6 class="mb-0 text-info fw-semibold">Scan in progress...</h6>
+              <p class="mb-0 text-muted small">
+                The scan is running in the background. This page will auto-refresh.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error Indicator -->
+        <div id="errorIndicator" class="{% if scan_record.status != 'error' %}d-none{% endif %}">
+          <div class="alert alert-danger mb-0">
+            <i class="bi bi-exclamation-circle"></i>
+            <strong>Scan failed.</strong>
+            <span id="errorMessage">
+              {% if scan_record.status == 'error' %}An error occurred during the scan.{% endif %}
+            </span>
+          </div>
+        </div>
+
+        <!-- Download Buttons (shown when done) -->
+        <div id="downloadButtons" class="mt-3 {% if scan_record.status != 'done' %}d-none{% endif %}">
+          <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ url_for('download_report', scan_id=scan_id, fmt='json') }}" class="btn btn-outline-secondary">
+              <i class="bi bi-file-code"></i> Download JSON
+            </a>
+            <a href="{{ url_for('download_report', scan_id=scan_id, fmt='html') }}" class="btn btn-outline-info">
+              <i class="bi bi-file-earmark-code"></i> Download HTML
+            </a>
+            <a href="{{ url_for('download_report', scan_id=scan_id, fmt='pdf') }}" class="btn btn-outline-danger">
+              <i class="bi bi-file-earmark-pdf"></i> Download PDF
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Results Content (populated by JS or server-rendered) -->
+<div id="resultsContainer">
+  {% if report_data %}
+    {% set vuln = report_data.vuln %}
+    {% set web = report_data.web %}
+    {% set recon = report_data.recon %}
+    {% set vuln_summary = report_data.vuln_summary %}
+    {% set grade = report_data.grade %}
+
+    <!-- Executive Summary -->
+    <div class="card bg-card border-secondary mb-4">
+      <div class="card-header bg-darker border-secondary">
+        <i class="bi bi-bar-chart-fill text-warning"></i>
+        <strong>Executive Summary</strong>
+      </div>
+      <div class="card-body text-center py-4">
+        <div class="grade-display grade-{{ grade|lower }} mb-3">{{ grade }}</div>
+        <p class="text-muted mb-4">Overall security grade based on findings</p>
+
+        <!-- Stats Row -->
+        <div class="d-flex justify-content-center gap-4 flex-wrap">
+          <div class="stat-item text-center">
+            <div class="stat-num text-danger">{{ vuln_summary.critical }}</div>
+            <div class="stat-label text-muted">Critical</div>
+          </div>
+          <div class="stat-item text-center">
+            <div class="stat-num text-warning">{{ vuln_summary.high }}</div>
+            <div class="stat-label text-muted">High</div>
+          </div>
+          <div class="stat-item text-center">
+            <div class="stat-num text-yellow">{{ vuln_summary.medium }}</div>
+            <div class="stat-label text-muted">Medium</div>
+          </div>
+          <div class="stat-item text-center">
+            <div class="stat-num text-primary">{{ vuln_summary.low }}</div>
+            <div class="stat-label text-muted">Low</div>
+          </div>
+          <div class="stat-item text-center">
+            <div class="stat-num text-secondary">{{ vuln_summary.info }}</div>
+            <div class="stat-label text-muted">Info</div>
+          </div>
+        </div>
+
+        <!-- Severity Bar Chart -->
+        {% set max_count = [vuln_summary.critical, vuln_summary.high, vuln_summary.medium, vuln_summary.low, vuln_summary.info]|max %}
+        {% if max_count > 0 %}
+        <div class="mt-4 d-flex justify-content-center align-items-end gap-3" style="height: 160px;">
+          {% for sev in ['critical', 'high', 'medium', 'low', 'info'] %}
+          {% set count = vuln_summary[sev] %}
+          {% set height = (count / max_count * 120)|int + 4 %}
+          <div class="d-flex flex-column align-items-center" style="width: 60px;">
+            <span class="small fw-bold mb-1">{{ count }}</span>
+            <div class="bar-{{ sev }}" style="width: 40px; height: {{ height }}px; border-radius: 4px 4px 0 0;"></div>
+            <span class="text-muted small mt-1">{{ sev|capitalize }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Findings by Module -->
+    {% include '_results_modules.html' %}
+
+  {% else %}
+
+    <!-- Placeholder when waiting for results -->
+    <div class="card bg-card border-secondary">
+      <div class="card-body text-center py-5">
+        <div class="spinner-border text-info mb-3" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="text-muted mb-0">Waiting for scan results...</p>
+      </div>
+    </div>
+
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SCAN_ID = '{{ scan_id }}';
+const STATUS_URL = '{{ url_for("api_scan_status", scan_id=scan_id) }}';
+let pollInterval: ReturnType<typeof setInterval> | null = null;
+let isDone = {% if scan_record.status in ['done', 'error'] %}true{% else %}false{% endif %};
+
+document.addEventListener('DOMContentLoaded', function() {
+  if (!isDone) {
+    startPolling();
+  }
+});
+
+function startPolling() {
+  pollInterval = setInterval(pollStatus, 2000);
+  pollStatus();
+}
+
+function stopPolling() {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+}
+
+async function pollStatus() {
+  try {
+    const response = await fetch(STATUS_URL);
+    const data = await response.json();
+
+    const status = data.status;
+
+    // Update status badge
+    const badgeContainer = document.getElementById('statusBadgeContainer');
+    const runningIndicator = document.getElementById('runningIndicator');
+    const errorIndicator = document.getElementById('errorIndicator');
+    const downloadButtons = document.getElementById('downloadButtons');
+
+    if (badgeContainer) {
+      if (status === 'done') {
+        badgeContainer.innerHTML = '<span class="badge bg-success fs-6"><i class="bi bi-check-circle"></i> Completed</span>';
+      } else if (status === 'running' || status === 'pending') {
+        badgeContainer.innerHTML = '<span class="badge bg-info fs-6"><i class="bi bi-hourglass-split"></i> Scanning...</span>';
+      } else if (status === 'error') {
+        badgeContainer.innerHTML = '<span class="badge bg-danger fs-6"><i class="bi bi-exclamation-circle"></i> Error</span>';
+      }
+    }
+
+    if (status === 'done') {
+      stopPolling();
+      isDone = true;
+      if (runningIndicator) runningIndicator.classList.add('d-none');
+      if (errorIndicator) errorIndicator.classList.add('d-none');
+      if (downloadButtons) downloadButtons.classList.remove('d-none');
+
+      // Reload to show server-rendered results (or we could render via JS)
+      if (data.results) {
+        window.location.reload();
+      }
+    } else if (status === 'error') {
+      stopPolling();
+      isDone = true;
+      if (runningIndicator) runningIndicator.classList.add('d-none');
+      if (errorIndicator) errorIndicator.classList.remove('d-none');
+
+      const errorMsg = document.getElementById('errorMessage');
+      if (errorMsg && data.error) {
+        errorMsg.textContent = ' ' + data.error;
+      }
+    } else {
+      // Still running - show indicator
+      if (runningIndicator) runningIndicator.classList.remove('d-none');
+      if (errorIndicator) errorIndicator.classList.add('d-none');
+    }
+
+  } catch (err) {
+    console.error('Polling error:', err);
+  }
+}
+</script>
+{% endblock %}

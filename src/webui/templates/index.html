@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}RIG Scanner — Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Hero / New Scan Section -->
+<div class="row justify-content-center mb-5">
+  <div class="col-lg-8">
+    <div class="card bg-card border-secondary shadow-lg">
+      <div class="card-header bg-darker border-secondary d-flex align-items-center gap-2">
+        <i class="bi bi-lightning-charge text-warning"></i>
+        <h5 class="mb-0 fw-bold">New Security Scan</h5>
+      </div>
+      <div class="card-body p-4">
+        {% if error %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          <i class="bi bi-exclamation-circle"></i> {{ error }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endif %}
+
+        <form action="{{ url_for('start_scan') }}" method="POST" id="scanForm">
+          <!-- Target Input -->
+          <div class="mb-4">
+            <label for="target" class="form-label fw-semibold">
+              <i class="bi bi-globe2 text-info"></i> Target URL or Domain
+            </label>
+            <div class="input-group input-group-lg">
+              <span class="input-group-text bg-dark border-secondary text-muted">
+                <i class="bi bi-link-45deg"></i>
+              </span>
+              <input type="text" class="form-control bg-dark border-secondary text-light"
+                     id="target" name="target"
+                     placeholder="example.com or https://example.com"
+                     value="{{ previous_target if previous_target else '' }}"
+                     required autofocus>
+              <button class="btn btn-danger btn-lg" type="submit" id="submitBtn">
+                <i class="bi bi-play-fill"></i> Start Scan
+              </button>
+            </div>
+            <div class="form-text text-muted mt-1">
+              Enter a domain name (e.g., example.com) or full URL (e.g., https://example.com/path)
+            </div>
+          </div>
+
+          <!-- Module Selection -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              <i class="bi bi-puzzle text-info"></i> Modules to Run
+            </label>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="card bg-dark border-secondary h-100 module-card" data-module="recon">
+                  <div class="card-body text-center">
+                    <div class="form-check form-switch d-flex justify-content-center mb-2">
+                      <input class="form-check-input module-checkbox" type="checkbox"
+                             id="mod_recon" name="modules" value="recon" checked>
+                      <label class="form-check-label ms-2" for="mod_recon">
+                        <strong>Reconnaissance</strong>
+                      </label>
+                    </div>
+                    <div class="text-muted small">
+                      <i class="bi bi-search text-primary"></i> DNS, WHOIS, Subdomains, Port scan
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card bg-dark border-secondary h-100 module-card" data-module="web">
+                  <div class="card-body text-center">
+                    <div class="form-check form-switch d-flex justify-content-center mb-2">
+                      <input class="form-check-input module-checkbox" type="checkbox"
+                             id="mod_web" name="modules" value="web" checked>
+                      <label class="form-check-label ms-2" for="mod_web">
+                        <strong>Web Analysis</strong>
+                      </label>
+                    </div>
+                    <div class="text-muted small">
+                      <i class="bi bi-window text-success"></i> Headers, SSL/TLS, Crawler, Fingerprint
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card bg-dark border-secondary h-100 module-card" data-module="vuln">
+                  <div class="card-body text-center">
+                    <div class="form-check form-switch d-flex justify-content-center mb-2">
+                      <input class="form-check-input module-checkbox" type="checkbox"
+                             id="mod_vuln" name="modules" value="vuln" checked>
+                      <label class="form-check-label ms-2" for="mod_vuln">
+                        <strong>Vulnerability</strong>
+                      </label>
+                    </div>
+                    <div class="text-muted small">
+                      <i class="bi bi-bug text-warning"></i> SQLi, XSS, CSRF, Sensitive Files
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Scans History -->
+<div class="row">
+  <div class="col-12">
+    <div class="card bg-card border-secondary">
+      <div class="card-header bg-darker border-secondary d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-clock-history text-info"></i>
+          <h5 class="mb-0 fw-bold">Recent Scans</h5>
+        </div>
+        <span class="badge bg-secondary">{{ recent_scans|length }} scans</span>
+      </div>
+      <div class="card-body p-0">
+        {% if recent_scans %}
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0">
+            <thead class="bg-darker">
+              <tr>
+                <th class="border-0">Target</th>
+                <th class="border-0">Modules</th>
+                <th class="border-0">Status</th>
+                <th class="border-0">Grade</th>
+                <th class="border-0">Findings</th>
+                <th class="border-0">Duration</th>
+                <th class="border-0">Started</th>
+                <th class="border-0 text-end">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for scan in recent_scans %}
+              <tr>
+                <td>
+                  <div class="fw-semibold text-truncate" style="max-width: 250px;">
+                    <i class="bi bi-bullseye text-info me-1"></i>
+                    {{ scan.target }}
+                  </div>
+                  <div class="text-muted small">ID: {{ scan.id[:8] }}...</div>
+                </td>
+                <td>
+                  {% for mod in scan.modules %}
+                  <span class="badge bg-secondary me-1">{{ mod }}</span>
+                  {% endfor %}
+                </td>
+                <td>
+                  {% set status = scan.status %}
+                  {% if status == 'done' %}
+                  <span class="badge bg-success"><i class="bi bi-check-circle"></i> Done</span>
+                  {% elif status == 'running' %}
+                  <span class="badge bg-info"><i class="bi bi-hourglass-split"></i> Running</span>
+                  {% elif status == 'pending' %}
+                  <span class="badge bg-secondary"><i class="bi bi-clock"></i> Pending</span>
+                  {% elif status == 'error' %}
+                  <span class="badge bg-danger"><i class="bi bi-exclamation-circle"></i> Error</span>
+                  {% else %}
+                  <span class="badge bg-secondary">{{ status }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if scan.grade %}
+                  <span class="grade-badge grade-{{ scan.grade|lower }}">{{ scan.grade }}</span>
+                  {% else %}
+                  <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if scan.findings_count is not none and scan.findings_count > 0 %}
+                  <span class="fw-semibold text-warning">{{ scan.findings_count }}</span>
+                  {% elif scan.status == 'done' %}
+                  <span class="text-success">0</span>
+                  {% else %}
+                  <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if scan.duration %}
+                  <span class="text-muted">{{ scan.duration|round(1) }}s</span>
+                  {% else %}
+                  <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="text-muted small" title="{{ scan.created_at }}">
+                    {{ scan.created_at[:19]|replace('T', ' ') }}
+                  </span>
+                </td>
+                <td class="text-end">
+                  <a href="{{ url_for('scan_results', scan_id=scan.id) }}"
+                     class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-eye"></i> View
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-inbox fs-1 mb-3 d-block opacity-50"></i>
+          <p class="mb-0">No scans yet. Start your first scan above!</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Module card click toggles checkbox
+  document.querySelectorAll('.module-card').forEach(function(card) {
+    card.addEventListener('click', function(e) {
+      if (e.target.type === 'checkbox') return;
+      const checkbox = card.querySelector('.module-checkbox');
+      if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        updateCardVisual(card);
+      }
+    });
+  });
+
+  document.querySelectorAll('.module-checkbox').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      const card = this.closest('.module-card');
+      if (card) updateCardVisual(card);
+    });
+  });
+
+  function updateCardVisual(card) {
+    const checkbox = card.querySelector('.module-checkbox');
+    if (checkbox && checkbox.checked) {
+      card.classList.add('border-info');
+      card.classList.remove('border-secondary');
+    } else {
+      card.classList.remove('border-info');
+      card.classList.add('border-secondary');
+    }
+  }
+
+  // Initialize card visuals
+  document.querySelectorAll('.module-card').forEach(updateCardVisual);
+
+  // Form submission loading state
+  const form = document.getElementById('scanForm');
+  const submitBtn = document.getElementById('submitBtn');
+
+  if (form && submitBtn) {
+    form.addEventListener('submit', function() {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Scanning...';
+    });
+  }
+});
+</script>
+{% endblock %}

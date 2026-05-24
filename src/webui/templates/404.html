@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}RIG Scanner — Not Found{% endblock %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-6 text-center py-5">
+    <div class="text-muted mb-4">
+      <i class="bi bi-question-circle fs-1 opacity-50"></i>
+    </div>
+    <h1 class="display-1 text-muted opacity-25 fw-bold">404</h1>
+    <h4 class="text-secondary mb-3">{{ message if message else 'Page not found' }}</h4>
+    <p class="text-muted mb-4">
+      The resource you're looking for doesn't exist or has been moved.
+    </p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">
+      <i class="bi bi-house-door"></i> Return to Dashboard
+    </a>
+  </div>
+</div>
+
+{% endblock %}
