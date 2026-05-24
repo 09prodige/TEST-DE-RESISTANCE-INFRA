@@ -1,0 +1,73 @@
+# =============================================================================
+# RIG Security Scanner — Configuration File
+# =============================================================================
+# Place this file at one of these locations (searched in order):
+#   1. ./rig.yml                 (project root)
+#   2. ./config/rig.yml          (config subdirectory)
+#   3. ~/.config/rig/config.yml  (user-global config)
+#
+# All keys are optional — missing keys fall back to built-in defaults.
+# =============================================================================
+
+# ── Scan settings ───────────────────────────────────────────────────────────
+scan:
+  # Modules to run when --modules is not specified on the CLI.
+  # Values: "recon", "web", "vuln", or omit to run all three.
+  default_modules: [recon, web, vuln]
+
+  # Global request timeout in seconds.
+  timeout: 30
+
+  # Maximum number of parallel threads for multi-threaded operations.
+  max_threads: 20
+
+  # Maximum requests per second (rate limiting).
+  rate_limit: 10
+
+  # User-Agent header sent in all HTTP requests.
+  user_agent: "RIG-Scanner/0.2"
+
+# ── Module-specific settings ────────────────────────────────────────────────
+modules:
+  # ── Reconnaissance (subdomain, DNS, port scan, WHOIS) ──
+  recon:
+    # Port range for TCP connect scan: [start, end]
+    port_range: [1, 10000]
+
+    # Subdomain wordlist preset: "default" uses bundled list,
+    # or provide a path to a custom wordlist file.
+    subdomain_wordlist: default
+
+    # DNS query timeout in seconds.
+    dns_timeout: 5
+
+  # ── Web analysis (headers, SSL, crawler, fingerprint) ──
+  web:
+    # Maximum crawl depth. 0 = home page only, 1 = one link deep, etc.
+    crawl_depth: 2
+
+    # SSL/TLS handshake timeout in seconds.
+    ssl_timeout: 10
+
+  # ── Vulnerability scanning (SQLi, XSS, CSRF, etc.) ──
+  vuln:
+    # Payload preset: "default" uses bundled payload lists,
+    # or provide a path to a custom payload file.
+    sqli_payloads: default
+    xss_payloads: default
+
+# ── Reporting ───────────────────────────────────────────────────────────────
+reporting:
+  # Output format: "html", "json", or "pdf".
+  format: html
+
+  # Directory where reports are saved (relative to project root).
+  output_dir: reports/
+
+  # CVSS version for score calculations: "3.1" or "4.0".
+  cvss_version: "3.1"
+
+# ── Docker (used by docker-compose.yml) ─────────────────────────────────────
+docker:
+  # Network mode: "host" or "bridge".
+  network: host

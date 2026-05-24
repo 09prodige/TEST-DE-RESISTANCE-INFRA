@@ -1,0 +1,62 @@
+# =============================================================================
+# Docker ignore — files and directories excluded from Docker build context
+# =============================================================================
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Python virtual environment
+venv/
+.venv/
+env/
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+.coverage.*
+*.coverage
+
+# Reports (generated at runtime, not needed in image)
+reports/
+*.html
+*.pdf
+*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# opencode
+.opencode/
+
+# Config examples (production config mounted as volume)
+config/rig.example.yml
+
+# Docker files (not needed inside image)
+Dockerfile
+.dockerignore
+docker-compose.yml
+Makefile
+
+# Project documentation
+README.md
+AGENTS.md
+GLOSSARY.md
+opencode.json

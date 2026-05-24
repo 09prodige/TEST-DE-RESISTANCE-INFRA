@@ -1,0 +1,49 @@
+# =============================================================================
+# RIG Security Scanner — Docker Compose
+# =============================================================================
+# Usage:
+#   docker compose run --rm rig-scanner scan example.com
+#   docker compose run --rm rig-scanner -c /app/config/rig.yml scan example.com
+#   docker compose run --rm rig-scanner bash
+#
+# Profile-specific scans:
+#   RIG_NETWORK_MODE=bridge docker compose --profile full-scan run full-scan
+#   RIG_NETWORK_MODE=bridge docker compose --profile quick-scan run quick-scan
+# =============================================================================
+
+services:
+  # ── Base service (no profile — always available) ──────────────────────────
+  rig-scanner:
+    image: rig-scanner:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rig-scanner
+    # No ports exposed — scan traffic is outbound only
+    volumes:
+      # Persist scan reports to host
+      - ./reports:/app/reports
+      # Mount YAML configuration (optional, read-only)
+      - ./config:/app/config:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Run as non-root (UID matches host to avoid permission issues)
+    user: "1001:1001"
+    # Network mode: "host" for direct interface access, "bridge" for isolation
+    network_mode: ${RIG_NETWORK_MODE:-host}
+    # Default command (overridable via `docker compose run`)
+    command: ["--help"]
+
+  # ── Full scan profile ─────────────────────────────────────────────────────
+  full-scan:
+    profiles: ["full-scan"]
+    extends:
+      service: rig-scanner
+    command: ["scan", "${TARGET:-example.com}", "--modules", "all"]
+
+  # ── Quick scan profile (recon only) ───────────────────────────────────────
+  quick-scan:
+    profiles: ["quick-scan"]
+    extends:
+      service: rig-scanner
+    command: ["scan", "${TARGET:-example.com}", "--modules", "recon"]

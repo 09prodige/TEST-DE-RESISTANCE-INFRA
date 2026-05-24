@@ -1,5 +1,6 @@
 """Enhanced HTTP client with safe sessions, retries, and redirect tracking."""
 
+import threading
 import time
 from typing import Any
 
@@ -20,20 +21,62 @@ DEFAULT_HEADERS = {
 
 # Rate limiting
 _REQUEST_TIMESTAMPS: list[float] = []
+_REQUEST_TIMESTAMPS_LOCK = threading.Lock()
 _MIN_REQUEST_INTERVAL = 0.5  # seconds between requests
 
 
+class RateLimiter:
+    """Configurable rate limiter for HTTP requests.
+
+    Ensures that no more than ``max_requests`` are made per
+    ``window`` seconds. Thread-safe.
+
+    Args:
+        max_requests: Maximum number of requests allowed in the window.
+        window: Time window in seconds.
+    """
+
+    def __init__(self, max_requests: int = 10, window: float = 10.0):
+        self.max_requests = max_requests
+        self.window = window
+        self._timestamps: list[float] = []
+        self._lock = threading.Lock()
+
+    def acquire(self) -> None:
+        """Block until a request slot is available."""
+        with self._lock:
+            now = time.time()
+            # Remove timestamps outside the window
+            cutoff = now - self.window
+            self._timestamps = [t for t in self._timestamps if t > cutoff]
+
+            if len(self._timestamps) >= self.max_requests:
+                # Sleep until the oldest timestamp expires
+                sleep_time = self._timestamps[0] + self.window - now
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+                # Retry after sleeping
+                self._timestamps = [t for t in self._timestamps if t > time.time() - self.window]
+
+            self._timestamps.append(time.time())
+
+    @property
+    def current_count(self) -> int:
+        """Return the number of requests in the current window."""
+        with self._lock:
+            now = time.time()
+            cutoff = now - self.window
+            self._timestamps = [t for t in self._timestamps if t > cutoff]
+            return len(self._timestamps)
+
+
+# Global rate limiter instance (backward-compatible)
+_GLOBAL_RATELIMITER = RateLimiter(max_requests=20, window=10.0)
+
+
 def _rate_limit() -> None:
-    """Enforce minimum delay between requests."""
-    now = time.time()
-    # Clean old timestamps
-    while _REQUEST_TIMESTAMPS and _REQUEST_TIMESTAMPS[0] < now - 60:
-        _REQUEST_TIMESTAMPS.pop(0)
-    if _REQUEST_TIMESTAMPS:
-        elapsed = now - _REQUEST_TIMESTAMPS[-1]
-        if elapsed < _MIN_REQUEST_INTERVAL:
-            time.sleep(_MIN_REQUEST_INTERVAL - elapsed)
-    _REQUEST_TIMESTAMPS.append(time.time())
+    """Enforce minimum delay between requests (legacy)."""
+    _GLOBAL_RATELIMITER.acquire()
 
 
 def safe_session(
